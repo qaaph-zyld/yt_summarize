@@ -1,0 +1,57 @@
+# Netlify configuration for YouTube Video Summarizer
+# This file configures the build process and deployment settings for Netlify
+
+[build]
+  # Command to build the application
+  command = "npm run build"
+  
+  # Directory to publish (the build output)
+  publish = "build"
+  
+  # Environment variables that should be set during the build
+  environment = { NODE_VERSION = "16" }
+
+# Redirects and rewrites
+[[redirects]]
+  # Redirect all paths to index.html for client-side routing
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers to set for all pages
+[[headers]]
+  # Define headers for all files
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    
+# Cache control for static assets
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache control for HTML files
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Plugin configurations
+[build.processing]
+  skip_processing = false
+[build.processing.css]
+  bundle = true
+  minify = true
+[build.processing.js]
+  bundle = true
+  minify = true
+[build.processing.images]
+  compress = true
+
+# Function configurations (if you add serverless functions later)
+[functions]
+  directory = "functions"
