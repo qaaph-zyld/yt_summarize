@@ -35,27 +35,27 @@ function App() {
     setTimeout(() => {
       setResult({
         videoId: 'FQlCWrsUpHo',
-        title: 'How to Make Boxed Mac and Cheese Better',
-        channel: 'Joshua Weissman',
-        duration: '10:00',
-        publishedDate: '2023-01-01',
+        title: 'Turn ANY Website into LLM Knowledge in Seconds',
+        channel: 'Matt Wolfe',
+        duration: '12:15',
+        publishedDate: '2023-09-18',
         summaries: {
-          brief: 'Joshua Weissman demonstrates how to elevate boxed mac and cheese with simple additions like butter, milk, cheese, and seasonings for a more flavorful dish.',
-          detailed: 'In this video, Joshua Weissman shows viewers how to transform ordinary boxed mac and cheese into a gourmet meal. He starts with the basic boxed product and enhances it by using real butter instead of margarine, whole milk instead of water, and adding extra cheese like sharp cheddar. He also incorporates seasonings such as garlic powder, onion powder, and a touch of mustard powder to add depth of flavor. Joshua emphasizes that these simple modifications can significantly improve the taste without much additional effort or cost. He demonstrates the cooking process step by step, showing how to properly cook the pasta and create a creamy, flavorful sauce.',
-          executive: 'Key takeaways: 1) Use real butter instead of margarine, 2) Substitute milk for water, 3) Add extra cheese for more flavor, 4) Include seasonings like garlic powder and mustard powder, 5) These simple changes dramatically improve boxed mac and cheese with minimal effort.'
+          brief: 'Matt Wolfe demonstrates how to use Retrieval-Augmented Generation (RAG) to turn any website into a knowledge source for LLMs, enabling more accurate and up-to-date responses based on specific web content.',
+          detailed: 'In this video, Matt Wolfe explains how to overcome the limitations of Large Language Models (LLMs) by using Retrieval-Augmented Generation (RAG) to incorporate website content as knowledge sources. He demonstrates several tools and techniques that allow users to extract information from websites and feed it into LLMs like ChatGPT to get more accurate, up-to-date, and contextually relevant responses. The video covers web scraping tools, vector databases, and embedding techniques that enable the conversion of website content into a format that LLMs can effectively use. Matt provides step-by-step instructions for implementing these techniques, showcasing both code-based and no-code solutions to make this technology accessible to users with varying technical expertise. He also discusses practical applications, including creating specialized chatbots that can answer questions about specific websites or documentation.',
+          executive: 'Key takeaways: 1) RAG helps overcome LLM knowledge limitations by incorporating external data, 2) Web scraping tools can extract content from websites for LLM use, 3) Vector databases store and retrieve relevant information efficiently, 4) Both code and no-code solutions exist for implementing RAG, 5) This technique enables creation of specialized AI assistants with domain-specific knowledge.'
         },
         keyPoints: [
-          'Use real butter instead of margarine for richer flavor',
-          'Substitute milk for water when mixing the sauce',
-          'Add extra cheese like sharp cheddar to enhance the cheese flavor',
-          'Include seasonings like garlic powder and mustard powder',
-          'These simple changes dramatically improve boxed mac and cheese with minimal effort'
+          'RAG (Retrieval-Augmented Generation) enhances LLMs with external knowledge sources',
+          'Web scraping tools can extract and process website content for LLM consumption',
+          'Vector databases enable efficient storage and retrieval of relevant information',
+          'Both technical and non-technical users can implement these solutions',
+          'This approach creates more accurate and specialized AI assistants'
         ],
         topics: [
-          { name: 'Introduction to boxed mac and cheese', timestamp: '0:00' },
-          { name: 'Ingredients and substitutions', timestamp: '2:30' },
-          { name: 'Cooking process', timestamp: '5:15' },
-          { name: 'Final result and taste test', timestamp: '8:45' }
+          { name: 'Introduction to RAG and LLM limitations', timestamp: '0:00' },
+          { name: 'Web scraping techniques and tools', timestamp: '3:45' },
+          { name: 'Vector databases and embeddings', timestamp: '7:20' },
+          { name: 'Practical applications and demonstrations', timestamp: '10:05' }
         ]
       });
       setLoading(false);
