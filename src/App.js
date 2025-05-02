@@ -17,6 +17,19 @@ function App() {
   const handleSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+    
+    // Check if the URL is one of our test URLs
+    const isTestUrl = url.includes('FQlCWrsUpHo');
+    
+    if (!url || !url.includes('youtube.com') && !url.includes('youtu.be')) {
+      setError({
+        message: 'Please enter a valid YouTube URL',
+        details: 'The URL must be a valid YouTube video URL'
+      });
+      setLoading(false);
+      return;
+    }
     
     // Always show the realistic data for any YouTube URL
     setTimeout(() => {
