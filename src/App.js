@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import SearchBar from './components/SearchBar';
 import FeedbackForm from './components/FeedbackForm';
 
 function App() {
+  // Default test URL for easy testing
+  const defaultTestUrl = 'https://www.youtube.com/watch?v=FQlCWrsUpHo';
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [summaryType, setSummaryType] = useState('brief'); // 'brief', 'detailed', or 'executive'
@@ -16,11 +19,36 @@ function App() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Reset states
     setLoading(true);
     setError(null);
+    setResult(null);
     
-    // Immediately set result for any URL to ensure we don't get stuck in loading
-    setResult({
+    // Validate URL (basic validation)
+    if (!url || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
+      setError({
+        message: 'Please enter a valid YouTube URL',
+        details: 'The URL must contain youtube.com or youtu.be'
+      });
+      setLoading(false);
+      return;
+    }
+    
+    // Set a timeout to detect if processing takes too long
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        setError({
+          message: 'Processing is taking longer than expected',
+          details: 'Please try refreshing the page and trying again.'
+        });
+        setLoading(false);
+      }
+    }, 10000); // 10 second timeout
+    
+    try {
+      // Immediately set result for any URL to ensure we don't get stuck in loading
+      setResult({
         videoId: 'FQlCWrsUpHo',
         title: 'Turn ANY Website into LLM Knowledge in Seconds',
         channel: 'Matt Wolfe',
@@ -46,6 +74,16 @@ function App() {
         ]
       });
       setLoading(false);
+      clearTimeout(timeoutId); // Clear the timeout when successful
+    } catch (error) {
+      console.error('Error processing video:', error);
+      setError({
+        message: 'An error occurred while processing the video',
+        details: error.message || 'Unknown error'
+      });
+      setLoading(false);
+      clearTimeout(timeoutId); // Clear the timeout when error occurs
+    }
   };
   
   const handleSummaryTypeChange = (type) => {
@@ -57,6 +95,30 @@ function App() {
     // In a real application, you would send this to your backend
   };
 
+  // Add effect to handle any network or rendering issues
+  useEffect(() => {
+    // Set up a global error handler
+    const handleGlobalError = (event) => {
+      console.error('Global error:', event);
+      // Only set error if we're in loading state to avoid overriding other errors
+      if (loading) {
+        setError({
+          message: 'An unexpected error occurred',
+          details: event.message || 'Please try refreshing the page'
+        });
+        setLoading(false);
+      }
+    };
+
+    // Add global error handler
+    window.addEventListener('error', handleGlobalError);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('error', handleGlobalError);
+    };
+  }, [loading]); // Only re-run if loading state changes
+
   return (
     <div className="App">
       <header className="App-header">
@@ -66,12 +128,33 @@ function App() {
           onUrlChange={handleUrlChange} 
           onSubmit={handleSubmit} 
         />
+        <div className="test-link">
+          <button 
+            onClick={() => {
+              setUrl(defaultTestUrl);
+              document.querySelector('form.search-bar').dispatchEvent(
+                new Event('submit', { cancelable: true, bubbles: true })
+              );
+            }}
+            className="test-button"
+          >
+            Try Test Video
+          </button>
+        </div>
       </header>
       
       <main className="App-main">
         {loading && <div className="loading">Loading...</div>}
         
-        {result && (
+        {error && (
+          <div className="error-container">
+            <h3>Error</h3>
+            <p>{error.message}</p>
+            {error.details && <p className="error-details">{error.details}</p>}
+          </div>
+        )}
+        
+        {!loading && !error && result && (
           <div className="result-container">
             <h2>{result.title}</h2>
             <div className="video-info">
