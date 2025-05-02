@@ -1,5 +1,75 @@
 /* Main App Styles */
 
+/* Transcript Section Styles */
+.transcript-section {
+  margin-top: 30px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 20px;
+}
+
+.transcript-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+  background-color: #f9f9f9;
+}
+
+.transcript-segment {
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.transcript-segment:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.transcript-timestamp {
+  display: inline-block;
+  font-weight: bold;
+  color: #e53935;
+  margin-right: 10px;
+  min-width: 45px;
+}
+
+.transcript-text {
+  margin: 5px 0 0 0;
+  line-height: 1.5;
+}
+
+/* Summary Type Selector Styles - Enhanced */
+.summary-type-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.summary-type-selector button {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: #f5f5f5;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.summary-type-selector button:hover {
+  background: #e9e9e9;
+}
+
+.summary-type-selector button.active {
+  background: #e53935;
+  color: white;
+  border-color: #e53935;
+  font-weight: bold;
+}
+
 /* Loading Animation */
 .loading {
   display: flex;
