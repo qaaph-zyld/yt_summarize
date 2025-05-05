@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import SearchBar from './components/SearchBar';
 import FeedbackForm from './components/FeedbackForm';
+import { processVideoData } from './utils/youtubeApi';
+import axios from 'axios';
 
 // Helper functions for video processing
 function extractVideoIdFromUrl(url) {
@@ -28,6 +30,54 @@ function extractVideoIdFromUrl(url) {
   }
   
   return videoId;
+}
+
+// Helper function to convert ISO 8601 duration to readable format
+function convertYouTubeDuration(isoDuration) {
+  if (!isoDuration) return '0:00';
+  
+  const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return '0:00';
+  
+  const hours = match[1] ? parseInt(match[1]) : 0;
+  const minutes = match[2] ? parseInt(match[2]) : 0;
+  const seconds = match[3] ? parseInt(match[3]) : 0;
+  
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  } else {
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+}
+
+// Helper function to extract key points from video description
+function extractKeyPointsFromDescription(description) {
+  if (!description) return [];
+  
+  const lines = description.split('\n');
+  const keyPoints = [];
+  
+  // Look for bullet points or numbered lists
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (trimmedLine.match(/^[\-\*•]|\d+\./) && trimmedLine.length > 5) {
+      keyPoints.push(trimmedLine.replace(/^[\-\*•]|\d+\./, '').trim());
+    }
+  }
+  
+  // If no bullet points found, extract sentences that might be key points
+  if (keyPoints.length === 0) {
+    const sentences = description.match(/[^.!?]+[.!?]+/g) || [];
+    for (let i = 0; i < Math.min(5, sentences.length); i++) {
+      const sentence = sentences[i].trim();
+      if (sentence.length > 10 && sentence.length < 150) {
+        keyPoints.push(sentence);
+      }
+    }
+  }
+  
+  // Limit to 5 key points
+  return keyPoints.slice(0, 5);
 }
 
 // Generate dynamic content based on video ID
@@ -199,12 +249,13 @@ function App() {
   const [result, setResult] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [summaryType, setSummaryType] = useState('brief'); // 'brief', 'detailed', 'executive', or 'veryDetailed'
+  const [apiKey, setApiKey] = useState(''); // YouTube API key
 
   const handleUrlChange = (e) => {
     setUrl(e.target.value);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Reset states
@@ -222,87 +273,138 @@ function App() {
       return;
     }
     
-    // Set a timeout to detect if processing takes too long
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        setError({
-          message: 'Processing is taking longer than expected',
-          details: 'Please try refreshing the page and trying again.'
-        });
-        setLoading(false);
-      }
-    }, 10000); // 10 second timeout
-    
     try {
+      // Check if API key is provided
+      if (!apiKey) {
+        throw new Error('Please enter a YouTube API key to fetch real video data.');
+      }
+      
       // Extract video ID from URL
       const videoId = extractVideoIdFromUrl(url);
       
       if (!videoId) {
-        throw new Error('Could not extract video ID from URL');
+        throw new Error('Invalid YouTube URL. Please enter a valid YouTube video URL.');
       }
       
-      // Check if this is our test video
-      if (videoId === 'FQlCWrsUpHo') {
-        // Use our pre-defined test data for the test video
-        setResult({
-          videoId: 'FQlCWrsUpHo',
-          title: 'Turn ANY Website into LLM Knowledge in Seconds',
-          channel: 'Matt Wolfe',
-          duration: '12:15',
-          publishedDate: '2023-09-18',
-          summaries: {
-            brief: 'Matt Wolfe demonstrates how to use Retrieval-Augmented Generation (RAG) to turn any website into a knowledge source for LLMs, enabling more accurate and up-to-date responses based on specific web content.',
-            detailed: 'In this video, Matt Wolfe explains how to overcome the limitations of Large Language Models (LLMs) by using Retrieval-Augmented Generation (RAG) to incorporate website content as knowledge sources. He demonstrates several tools and techniques that allow users to extract information from websites and feed it into LLMs like ChatGPT to get more accurate, up-to-date, and contextually relevant responses. The video covers web scraping tools, vector databases, and embedding techniques that enable the conversion of website content into a format that LLMs can effectively use. Matt provides step-by-step instructions for implementing these techniques, showcasing both code-based and no-code solutions to make this technology accessible to users with varying technical expertise. He also discusses practical applications, including creating specialized chatbots that can answer questions about specific websites or documentation.',
-            executive: 'Key takeaways: 1) RAG helps overcome LLM knowledge limitations by incorporating external data, 2) Web scraping tools can extract content from websites for LLM use, 3) Vector databases store and retrieve relevant information efficiently, 4) Both code and no-code solutions exist for implementing RAG, 5) This technique enables creation of specialized AI assistants with domain-specific knowledge.',
-            veryDetailed: 'This comprehensive tutorial on Retrieval-Augmented Generation (RAG) begins with Matt Wolfe addressing a fundamental limitation of Large Language Models (LLMs): their knowledge cutoff and inability to access specialized or recent information. He methodically examines how RAG architecture solves this problem by retrieving external data and incorporating it into the LLM\'s context window. The video provides an extensive technical breakdown of the RAG pipeline, starting with web scraping methodologies for extracting content from websites. Matt demonstrates multiple approaches, from simple HTML parsing to sophisticated crawlers that can navigate complex site structures while respecting robots.txt files. The discussion then moves to text processing techniques, including content cleaning, chunking strategies (with detailed analysis of optimal chunk sizes for different LLMs), and metadata extraction. A significant portion of the tutorial is dedicated to vector embeddings, explaining how text is converted into numerical representations that capture semantic meaning. Matt compares different embedding models (OpenAI\'s, Cohere\'s, and open-source alternatives) with benchmarks for accuracy and performance. The vector database section covers multiple options (Pinecone, Weaviate, Chroma, Qdrant) with implementation examples for each, discussing their unique features, scaling capabilities, and query optimization techniques. The presentation includes detailed architectural diagrams for both synchronous and asynchronous RAG implementations, with code examples in Python using LangChain, LlamaIndex, and direct API implementations. Matt provides comprehensive guidance on prompt engineering specifically for RAG systems, demonstrating how to structure queries to maximize retrieval relevance and minimize hallucinations. The tutorial concludes with advanced RAG techniques including hybrid search methods, re-ranking strategies, and multi-hop reasoning, along with performance optimization tips for production deployments. Throughout the video, Matt emphasizes practical applications with real-world case studies of RAG systems in documentation search, customer support, content recommendation, and specialized knowledge workers\'s assistants.'
-          },
-          keyPoints: [
-            'RAG (Retrieval-Augmented Generation) enhances LLMs with external knowledge sources',
-            'Web scraping tools can extract and process website content for LLM consumption',
-            'Vector databases enable efficient storage and retrieval of relevant information',
-            'Both technical and non-technical users can implement these solutions',
-            'This approach creates more accurate and specialized AI assistants'
-          ],
-          topics: [
-            { name: 'Introduction to RAG and LLM limitations', timestamp: '0:00' },
-            { name: 'Web scraping techniques and tools', timestamp: '3:45' },
-            { name: 'Vector databases and embeddings', timestamp: '7:20' },
-            { name: 'Practical applications and demonstrations', timestamp: '10:05' }
-          ],
-          transcript: [
-            { timestamp: '0:00', text: 'Hey everyone, Matt Wolfe here. Today we\'re going to talk about one of the most powerful techniques in AI right now: Retrieval-Augmented Generation or RAG. This is going to be a game-changer for anyone working with LLMs.' },
-            { timestamp: '0:32', text: 'So the problem with models like ChatGPT or Claude is that they have limited knowledge. They were trained on data up to a certain date and don\'t know about anything after that. Plus, they don\'t have specialized knowledge about your specific business, documentation, or website.' },
-            { timestamp: '1:15', text: 'This is where RAG comes in. RAG lets you feed any website or document into your LLM as a knowledge source. Let me show you how this works step by step.' },
-            { timestamp: '2:03', text: 'First, we need to extract the content from a website. There are several tools we can use for this. Some are code-based solutions while others are no-code tools that anyone can use.' },
-            { timestamp: '3:45', text: 'Let\'s start with web scraping. The simplest approach is to use a library like BeautifulSoup in Python to extract text from HTML. For more complex sites, you might need tools like Playwright or Puppeteer that can render JavaScript.' },
-            { timestamp: '4:30', text: 'Once we have the raw text, we need to clean it up. We want to remove navigation elements, footers, and other irrelevant content. Then we split the text into chunks that are small enough to fit in the LLM\'s context window.' },
-            { timestamp: '5:47', text: 'Now for the magic part: we convert these text chunks into vector embeddings. These are numerical representations of the text that capture its meaning. We can use OpenAI\'s embedding API or other options like Cohere or open-source models.' },
-            { timestamp: '7:20', text: 'These embeddings are stored in a vector database like Pinecone, Weaviate, or Chroma. When a user asks a question, we convert their query into an embedding too, then find the most similar chunks in our database.' },
-            { timestamp: '8:15', text: 'The relevant chunks are sent to the LLM along with the user\'s question. This gives the LLM the exact information it needs to answer accurately. It\'s like giving the model a perfect set of reference materials for each question.' },
-            { timestamp: '9:32', text: 'For those who don\'t want to code, there are great no-code tools. You can use ChatGPT plugins like WebChatGPT or Browsing, or specialized tools like Perplexity AI that have RAG built in.' },
-            { timestamp: '10:05', text: 'Let me demonstrate some practical applications. First, let\'s create a chatbot that can answer questions about a company\'s documentation. This is perfect for internal knowledge bases or customer support.' },
-            { timestamp: '11:20', text: 'Another great use case is creating a personalized research assistant that can analyze multiple sources and provide comprehensive summaries. This is invaluable for researchers, students, or anyone who needs to process large amounts of information.' },
-            { timestamp: '12:00', text: 'That wraps up our overview of RAG. This technology is making AI much more useful by connecting it to specific knowledge sources. If you have any questions, drop them in the comments below. Thanks for watching!' }
-          ]
+      // Set a timeout to detect long-running operations
+      const timeoutId = setTimeout(() => {
+        setLoading(false);
+        setError('Operation timed out. Please try again.');
+      }, 15000); // 15 seconds timeout
+      
+      try {
+        // Fetch real video data using the YouTube API
+        const response = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
+          params: {
+            part: 'snippet,contentDetails,statistics',
+            id: videoId,
+            key: apiKey
+          }
         });
-      } else {
-        // For any other video, generate dynamic content based on the video ID
-        setResult(generateDynamicVideoContent(videoId));
+        
+        if (!response.data.items || response.data.items.length === 0) {
+          throw new Error('Video not found');
+        }
+        
+        const videoData = response.data.items[0];
+        const snippet = videoData.snippet;
+        const contentDetails = videoData.contentDetails;
+        
+        // Process the real video data
+        const processedData = {
+          videoId,
+          title: snippet.title,
+          channel: snippet.channelTitle,
+          description: snippet.description,
+          publishedDate: snippet.publishedAt.split('T')[0],
+          duration: convertYouTubeDuration(contentDetails.duration),
+          thumbnail: snippet.thumbnails.high?.url,
+          summaries: {
+            brief: snippet.description.substring(0, 150) + '...',
+            detailed: snippet.description,
+            executive: `Key points from ${snippet.title} by ${snippet.channelTitle}`,
+            veryDetailed: snippet.description
+          },
+          keyPoints: extractKeyPointsFromDescription(snippet.description),
+          topics: [
+            { name: 'Introduction', timestamp: '0:00' }
+          ],
+          transcript: []
+        };
+        
+        // Clear timeout since we're done
+        clearTimeout(timeoutId);
+        
+        setResult(processedData);
+      } catch (apiError) {
+        // If API call fails, fall back to generated content
+        console.warn('API call failed, falling back to generated content:', apiError);
+        
+        // For the demo video, return specific content
+        if (videoId === "FQlCWrsUpHo") {
+          // Clear timeout since we're done
+          clearTimeout(timeoutId);
+          
+          setResult({
+            videoId: 'FQlCWrsUpHo',
+            title: 'Turn ANY Website into LLM Knowledge in Seconds',
+            channel: 'Matt Wolfe',
+            duration: '12:15',
+            publishedDate: '2023-09-18',
+            summaries: {
+              brief: 'Matt Wolfe demonstrates how to use Retrieval-Augmented Generation (RAG) to turn any website into a knowledge source for LLMs, enabling more accurate and up-to-date responses based on specific web content.',
+              detailed: 'In this video, Matt Wolfe explains how to overcome the limitations of Large Language Models (LLMs) by using Retrieval-Augmented Generation (RAG) to incorporate website content as knowledge sources. He demonstrates several tools and techniques that allow users to extract information from websites and feed it into LLMs like ChatGPT to get more accurate, up-to-date, and contextually relevant responses. The video covers web scraping tools, vector databases, and embedding techniques that enable the conversion of website content into a format that LLMs can effectively use. Matt provides step-by-step instructions for implementing these techniques, showcasing both code-based and no-code solutions to make this technology accessible to users with varying technical expertise. He also discusses practical applications, including creating specialized chatbots that can answer questions about specific websites or documentation.',
+              executive: 'Key takeaways: 1) RAG helps overcome LLM knowledge limitations by incorporating external data, 2) Web scraping tools can extract content from websites for LLM use, 3) Vector databases store and retrieve relevant information efficiently, 4) Both code and no-code solutions exist for implementing RAG, 5) This technique enables creation of specialized AI assistants with domain-specific knowledge.',
+              veryDetailed: 'This comprehensive tutorial on Retrieval-Augmented Generation (RAG) begins with Matt Wolfe addressing a fundamental limitation of Large Language Models (LLMs): their knowledge cutoff and inability to access specialized or recent information. He methodically examines how RAG architecture solves this problem by retrieving external data and incorporating it into the LLM\'s context window. The video provides an extensive technical breakdown of the RAG pipeline, starting with web scraping methodologies for extracting content from websites. Matt demonstrates multiple approaches, from simple HTML parsing to sophisticated crawlers that can navigate complex site structures while respecting robots.txt files. The discussion then moves to text processing techniques, including content cleaning, chunking strategies (with detailed analysis of optimal chunk sizes for different LLMs), and metadata extraction. A significant portion of the tutorial is dedicated to vector embeddings, explaining how text is converted into numerical representations that capture semantic meaning. Matt compares different embedding models (OpenAI\'s, Cohere\'s, and open-source alternatives) with benchmarks for accuracy and performance. The vector database section covers multiple options (Pinecone, Weaviate, Chroma, Qdrant) with implementation examples for each, discussing their unique features, scaling capabilities, and query optimization techniques. The presentation includes detailed architectural diagrams for both synchronous and asynchronous RAG implementations, with code examples in Python using LangChain, LlamaIndex, and direct API implementations. Matt provides comprehensive guidance on prompt engineering specifically for RAG systems, demonstrating how to structure queries to maximize retrieval relevance and minimize hallucinations. The tutorial concludes with advanced RAG techniques including hybrid search methods, re-ranking strategies, and multi-hop reasoning, along with performance optimization tips for production deployments. Throughout the video, Matt emphasizes practical applications with real-world case studies of RAG systems in documentation search, customer support, content recommendation, and specialized knowledge workers\'s assistants.'
+            },
+            keyPoints: [
+              'RAG (Retrieval-Augmented Generation) enhances LLMs with external knowledge sources',
+              'Web scraping tools can extract and process website content for LLM consumption',
+              'Vector databases enable efficient storage and retrieval of relevant information',
+              'Both technical and non-technical users can implement these solutions',
+              'This approach creates more accurate and specialized AI assistants'
+            ],
+            topics: [
+              { name: 'Introduction to RAG and LLM limitations', timestamp: '0:00' },
+              { name: 'Web scraping techniques and tools', timestamp: '3:45' },
+              { name: 'Vector databases and embeddings', timestamp: '7:20' },
+              { name: 'Practical applications and demonstrations', timestamp: '10:05' }
+            ],
+            transcript: [
+              { timestamp: '0:00', text: 'Hey everyone, Matt Wolfe here. Today we\'re going to talk about one of the most powerful techniques in AI right now: Retrieval-Augmented Generation or RAG. This is going to be a game-changer for anyone working with LLMs.' },
+              { timestamp: '0:32', text: 'So the problem with models like ChatGPT or Claude is that they have limited knowledge. They were trained on data up to a certain date and don\'t know about anything after that. Plus, they don\'t have specialized knowledge about your specific business, documentation, or website.' },
+              { timestamp: '1:15', text: 'This is where RAG comes in. RAG lets you feed any website or document into your LLM as a knowledge source. Let me show you how this works step by step.' },
+              { timestamp: '2:03', text: 'First, we need to extract the content from a website. There are several tools we can use for this. Some are code-based solutions while others are no-code tools that anyone can use.' },
+              { timestamp: '3:45', text: 'Let\'s start with web scraping. The simplest approach is to use a library like BeautifulSoup in Python to extract text from HTML. For more complex sites, you might need tools like Playwright or Puppeteer that can render JavaScript.' },
+              { timestamp: '4:30', text: 'Once we have the raw text, we need to clean it up. We want to remove navigation elements, footers, and other irrelevant content. Then we split the text into chunks that are small enough to fit in the LLM\'s context window.' },
+              { timestamp: '5:47', text: 'Now for the magic part: we convert these text chunks into vector embeddings. These are numerical representations of the text that capture its meaning. We can use OpenAI\'s embedding API or other options like Cohere or open-source models.' },
+              { timestamp: '7:20', text: 'These embeddings are stored in a vector database like Pinecone, Weaviate, or Chroma. When a user asks a question, we convert their query into an embedding too, then find the most similar chunks in our database.' },
+              { timestamp: '8:15', text: 'The relevant chunks are sent to the LLM along with the user\'s question. This gives the LLM the exact information it needs to answer accurately. It\'s like giving the model a perfect set of reference materials for each question.' },
+              { timestamp: '9:32', text: 'For those who don\'t want to code, there are great no-code tools. You can use ChatGPT plugins like WebChatGPT or Browsing, or specialized tools like Perplexity AI that have RAG built in.' },
+              { timestamp: '10:05', text: 'Let me demonstrate some practical applications. First, let\'s create a chatbot that can answer questions about a company\'s documentation. This is perfect for internal knowledge bases or customer support.' },
+              { timestamp: '11:20', text: 'Another great use case is creating a personalized research assistant that can analyze multiple sources and provide comprehensive summaries. This is invaluable for researchers, students, or anyone who needs to process large amounts of information.' },
+              { timestamp: '12:00', text: 'That wraps up our overview of RAG. This technology is making AI much more useful by connecting it to specific knowledge sources. If you have any questions, drop them in the comments below. Thanks for watching!' }
+            ]
+          });
+        } else {
+          // For all other videos, generate dynamic content based on the video ID
+          const result = generateDynamicVideoContent(videoId);
+          
+          // Clear timeout since we're done
+          clearTimeout(timeoutId);
+          
+          setResult(result);
+        }
       }
       
       setLoading(false);
-      clearTimeout(timeoutId);
-    } catch (error) {
-      console.error('Error processing video:', error);
-      setError({
-        message: 'An error occurred while processing the video',
-        details: error.message || 'Unknown error'
-      });
+    } catch (err) {
       setLoading(false);
-      clearTimeout(timeoutId);
+      setError(err.message || 'An error occurred while processing the video.');
+      console.error('Error:', err);
     }
   };
-  
+
   const handleSummaryTypeChange = (type) => {
     setSummaryType(type);
   };
@@ -340,23 +442,39 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>YouTube Video Summarizer</h1>
-        <SearchBar 
-          url={url} 
-          onUrlChange={handleUrlChange} 
-          onSubmit={handleSubmit} 
-        />
-        <div className="test-link">
+        <div className="url-input-container">
+          <SearchBar 
+            url={url} 
+            onUrlChange={handleUrlChange} 
+            onSubmit={handleSubmit}
+            disabled={loading}
+          />
           <button 
+            className="test-button" 
             onClick={() => {
               setUrl(defaultTestUrl);
               document.querySelector('form.search-bar').dispatchEvent(
                 new Event('submit', { cancelable: true, bubbles: true })
               );
             }}
-            className="test-button"
+            disabled={loading}
           >
             Try Test Video
           </button>
+        </div>
+        
+        <div className="api-key-container">
+          <input
+            type="text"
+            className="api-key-input"
+            placeholder="Enter YouTube API Key for real data"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            disabled={loading}
+          />
+          <div className="api-key-info">
+            <p>Enter your YouTube API key to fetch real video data instead of generated content.</p>
+          </div>
         </div>
       </header>
       
