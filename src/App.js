@@ -249,7 +249,7 @@ function App() {
   const [result, setResult] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [summaryType, setSummaryType] = useState('brief'); // 'brief', 'detailed', 'executive', or 'veryDetailed'
-  const [apiKey, setApiKey] = useState(''); // YouTube API key
+  const [apiKey, setApiKey] = useState('AIzaSyCf1mPKR1f8ZsRWIH95X3GRpqQkV49yXkM'); // YouTube API key
 
   const handleUrlChange = (e) => {
     setUrl(e.target.value);
